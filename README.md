@@ -17,7 +17,18 @@ $ conda create -n knowlage-rag
 ```bash
 $ conda activate knowlage-rag
 ```
-4) install packeges and libraries:
+
+## Installation
+
+### install required packages
+
 ```bash 
 $ pip install -r requirements.txt
 ```
+### Setup the env variables
+
+```bash 
+$ cp .env.example .env
+```
+
+Setup your environments variables in the `.env` file. Like `OPENAI_KEY` value.
