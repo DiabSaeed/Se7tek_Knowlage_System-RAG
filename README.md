@@ -17,3 +17,7 @@ $ conda create -n knowlage-rag
 ```bash
 $ conda activate knowlage-rag
 ```
+4) install packeges and libraries:
+```bash 
+$ pip install -r requirements.txt
+```
