@@ -1,4 +1,10 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python.analysis.extraPaths": [
+        "/home/diab_saeed/miniconda3/envs/knowleage-rag/lib/python3.13/site-packages"
+    ],
+    "python.defaultInterpreterPath": "/home/diab_saeed/miniconda3/envs/knowleage-rag/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.languageServer": "Pylance"
 }
