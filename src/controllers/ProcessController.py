@@ -1,4 +1,5 @@
 from .BaseController import BaseController
+from .ProjectController import ProjectController
 from helpers.config import Settings
 from docling.document_converter import DocumentConverter
 from llama_parse import LlamaParse
@@ -11,9 +12,12 @@ import logging
 logger = logging.getLogger()
 
 class ProcessControler(BaseController):
-    def __init__(self):
+    def __init__(self,project_id):
         super().__init__()
         self.converter = DocumentConverter()
+        self.project_id = project_id
+        self.project_path = ProjectController().create_project_path(project_id=project_id)
+        
     def content_extraction(self, file_path):
         simple_pages = []
         complex_pages = []
@@ -105,4 +109,3 @@ class ProcessControler(BaseController):
                     if os.path.exists(complex_pdfs):
                         os.remove(complex_pdfs)
         return final_docs
-        

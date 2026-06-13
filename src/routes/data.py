@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Depends, APIRouter, UploadFile, status
 from fastapi.responses import JSONResponse
 from helpers.config import Settings, get_settings
-from controllers import DataController, ProjectController
+from controllers import DataController, ProjectController, ProcessControler,ChunckingController
+from .schemas.data import ProcessRequest
 import os 
 import aiofiles
 from models import ResponseEnums
@@ -51,3 +52,24 @@ async def upload_files(project_id: str,
                     "signal": ResponseEnums.FILE_UPLOADED_FIELD.value,
                 }
             )
+@data_router.post("/process/{project_id}")
+async def process_file(
+    project_id: str,
+    process_request: ProcessRequest
+):
+    file_id = process_request.file_id
+    file_path = ProjectController().create_project_path(project_id=project_id)+"/"+file_id+".pdf"
+    chunk_size = process_request.chunk_size
+    chunk_overlab = process_request.chunk_overlab
+    process_controller = ProcessControler(project_id=project_id)
+    file_content = process_controller.content_transformation(file_path=file_path)
+    chunking = ChunckingController(chunk_size=chunk_size,recursive_chars=chunk_overlab)
+    file_chuncks = chunking.chunk_splitter(file_content)
+    if file_chuncks is None or len(file_chuncks) == 0:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": "Failed"
+            }
+        )
+    return file_chuncks
