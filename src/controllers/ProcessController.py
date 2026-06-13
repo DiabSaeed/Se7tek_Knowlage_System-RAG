@@ -3,6 +3,7 @@ from .ProjectController import ProjectController
 from helpers.config import Settings
 from docling.document_converter import DocumentConverter
 from llama_parse import LlamaParse
+from llama_parse.utils import ResultType
 from langchain_core.documents import Document
 import pymupdf
 import tempfile
@@ -28,7 +29,7 @@ class ProcessControler(BaseController):
                 tables = doc.find_tables()
                 images = doc.get_image_info()
 
-                if len(tables.tables) > 0 or len(images) > 0:
+                if tables is not None and len(tables.tables) > 0 or len(images) > 0:
                     complex_pages.append(page + 1)
                 else:
                     simple_pages.append(page + 1)
@@ -71,7 +72,7 @@ class ProcessControler(BaseController):
             target_pages_str = ",".join(str(p - 1) for p in complex_pages)
             try:
                 llama_parser = LlamaParse(
-                    result_type="markdown",
+                    result_type=ResultType.MD,
                     target_pages=target_pages_str,
                     api_key= Settings.LLAMA_PARSER_API_KEY
                 )
@@ -90,8 +91,8 @@ class ProcessControler(BaseController):
                 )
             except Exception as e:
                 logger.error(f"error while parsing as {e}")
+                complex_pdfs = self.__extract_to_temp_file(file_path,complex_pages)
                 try:
-                    complex_pdfs = self.__extract_to_temp_file(file_path,complex_pages)
                     docling_result = self.converter.convert(complex_pdfs)
                     docling_md = docling_result.document.export_to_markdown()
                     

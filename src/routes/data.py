@@ -30,7 +30,7 @@ async def upload_files(project_id: str,
             }
         )
 
-    file_path,file_id = data_controller.generate_unique_filename(file_name=file.filename,project_id=project_id)
+    file_path,file_id = data_controller.generate_unique_filename(file_name=file.filename or "unnamed_file.pdf",project_id=project_id)
     try: 
         async with aiofiles.open(file_path,"wb") as f:
             while chunk := await file.read(app_settings.FILE_CHUNCK_SIZE):
