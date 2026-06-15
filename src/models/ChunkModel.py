@@ -8,7 +8,22 @@ class ChunkModel(BaseDataModel):
     def __init__(self, db_client):
         super().__init__(db_client)
         self.collection = db_client[ProjectEnum.COLLECTION_CHUNKS_NAME.value]
-        
+    @classmethod
+    async def create_instance(cls, db_client: object):
+        instance = cls(db_client)
+        await instance.init_collections_and_indexes()
+        return instance
+    async def init_collections_and_indexes(self):
+        collections = await self.db_client.list_collection_names()
+        if ProjectEnum.COLLECTION_CHUNKS_NAME.value not in collections:
+            self.collection = self.db_client[ProjectEnum.COLLECTION_CHUNKS_NAME.value]
+            indexes = ChunkSchema.get_indexes()
+            for index in indexes:
+                await self.collection.create_index(
+                    index['key'],
+                    name=index['name'],
+                    unique=index['unique']
+                )
     async def insert_new_chunk(self, chunk: ChunkSchema):
         
         result = await self.collection.insert_one(chunk.model_dump(by_alias=True,exclude_unset=True))
@@ -16,7 +31,7 @@ class ChunkModel(BaseDataModel):
         return chunk
     async def get_chunks_related_to_project(self,project_id: str, page: int = 1, page_size:int = 10):
         
-        total_chunks = await self.collection.count_documents({"chunk_project_id" : ObjectId(project_id)})
+        total_chunks = await self.collection.count_documents({"chunk_project_id" : ObjectId(project_id) if isinstance(project_id,str) else project_id})
         total_pages = total_chunks // page_size
         if total_pages % page_size > 0: 
             total_pages +=1
