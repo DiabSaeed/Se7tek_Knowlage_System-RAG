@@ -22,10 +22,10 @@ async def upload_files(project_id: str,
                        file: UploadFile,
                        request:Request,
                        app_settings: Settings=Depends(get_settings)):
-    prject_model = ProjectModel(
+    project_model = await ProjectModel.create_instance(
         db_client= request.state.Database
     )
-    project = await prject_model.get_project_or_create(
+    project = await project_model.get_project_or_create(
         project_id=project_id
         )
     
@@ -70,10 +70,10 @@ async def process_file(
         request: Request
     ):
     
-    chunk_model = ChunkModel(
+    chunk_model = await ChunkModel.create_instance(
         db_client= request.state.Database
     )
-    prject_model = ProjectModel(
+    project_model = await ProjectModel.create_instance(
         db_client= request.state.Database
     )
     do_reset = process_request.do_reset
@@ -87,7 +87,7 @@ async def process_file(
     file_content = process_controller.content_transformation(file_path=file_path)
     chunking = ChunckingController(chunk_size=chunk_size,recursive_chars=chunk_overlab)
     file_chunks = chunking.chunk_splitter(file_content)
-    project = await prject_model.get_project_or_create(
+    project = await project_model.get_project_or_create(
         project_id=project_id
         )
     if file_chunks is None or len(file_chunks) == 0:
