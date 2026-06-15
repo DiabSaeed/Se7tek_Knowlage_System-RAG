@@ -31,7 +31,7 @@ class ChunkModel(BaseDataModel):
         return chunk
     async def get_chunks_related_to_project(self,project_id: str, page: int = 1, page_size:int = 10):
         
-        total_chunks = await self.collection.count_documents({"chunk_project_id" : ObjectId(project_id)})
+        total_chunks = await self.collection.count_documents({"chunk_project_id" : ObjectId(project_id) if isinstance(project_id,str) else project_id})
         total_pages = total_chunks // page_size
         if total_pages % page_size > 0: 
             total_pages +=1
