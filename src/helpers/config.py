@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = ""
     APP_VERSION: str = ""
-    OPENAI_KEY: str = ""
     LLAMA_PARSER_API_KEY: str = ""
     
     FILE_ALLOWED_TYPES: list = []
@@ -13,7 +12,20 @@ class Settings(BaseSettings):
     MONGODB_URL: str = ""
     MONGODB_NAME: str = ""
     
+    GENERATION_BACKEND : str = ""
+    EMBEDING_BACKEND : str = ""
+
+    OPENAI_KEY : str= ""
+    OPENAI_URL  : str= ""
+
+    GENERATION_MODEL_ID : str = ""
+    EMBEDING_MODEL_ID: str = ""
+
+    INPUT_DEFAULT_MAX_CHARARACTERS : int
+    GENERATION_DEFAULT_MAX_TOKENS : int
+    GENERATION_DEFAULT_TEMPERATURE : float
+    EMBEDING_MODEL_SIZE: int
     model_config = SettingsConfigDict(env_file=".env")
 
 def get_settings():
-    return Settings() # ignore
+    return Settings() # type: ignore
