@@ -9,11 +9,14 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
     
     def __init__(self, 
                  open_ai_key: str,
+                 base_url: str,
                  input_max_characters: int = 1000,
                  default_generation_max_tokens: int = 1000,
-                 default_generation_temperature: float = 0.1): 
+                 default_generation_temperature: float = 0.1
+                 ): 
         
         self.open_ai_key = open_ai_key
+        self.base_url = base_url
         self.input_max_characters = input_max_characters
         self.default_generation_max_tokens = default_generation_max_tokens
         self.default_generation_temperature = default_generation_temperature
@@ -22,7 +25,7 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
         self.embedings_model_id = None
         self.embedings_size = None
         
-        self.client = OpenAI(api_key=self.open_ai_key)
+        self.client = OpenAI(api_key=self.open_ai_key, base_url=self.base_url)
         self.logger = logging.getLogger(__name__)
         
     def set_generation_model(self, model_id):
@@ -32,12 +35,13 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
         self.embedings_model_id = model_id
         self.embedings_size = embeding_size 
         
-    def generate_text(self, prompt: str, chat_history: list = [None], temperature: float = .1, max_tokens: int = 1000) -> str | None:
-        if chat_history is [None]:
+    def generate_text(self, prompt: str, chat_history: list | None = None , temperature: float = .1, max_tokens: int = 1000) -> str | None:
+        if chat_history is None:
             chat_history = []
             
         if not self.client:
             self.logger.error("OpenAI Client is not initialized") 
+            
             return None
         if not self.generation_model_id:
             self.logger.error("Generation model for OpenAI not set")

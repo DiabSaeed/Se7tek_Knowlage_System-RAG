@@ -2,6 +2,7 @@ import logging
 from FlagEmbedding import BGEM3FlagModel
 from ...EmbeddingInterface import EmbeddingInterface
 import re
+import tiktoken
 
 class BGEM3Provider(EmbeddingInterface):
     def __init__(self):
@@ -21,9 +22,6 @@ class BGEM3Provider(EmbeddingInterface):
         except Exception as e:
             self.logger.error(f"Failed to load BGE-M3 model: {e}")
     def embed_text(self, text: str, doc_type = None) -> list | None:
-        """
-        تحويل النص إلى أرقام (Dense Vector).
-        """
         if not self.embed_model:
             self.logger.error("BGE-M3 model is not loaded. Please call set_embedding_model() first.")
             return None
@@ -61,3 +59,14 @@ class BGEM3Provider(EmbeddingInterface):
         text = re.sub(r'[أإآ]', 'ا', text)
         text = re.sub(r'ة', 'ه', text)
         return text
+    def count_tokens(self, text: str):
+        if not text:
+            return 0
+        try:
+            encoding = tiktoken.encoding_for_model(str(self.embedding_model_id))
+        except KeyError:
+            self.logger.warning(f"Model {self.embedding_model_id} not found. Using default encoding.")
+            encoding = tiktoken.get_encoding("cl100k_base")
+        tokens = encoding.encode(text)
+        return len(tokens)
+    
