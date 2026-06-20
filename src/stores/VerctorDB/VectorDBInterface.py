@@ -46,3 +46,11 @@ class VectorDBInterface(ABC):
     def delete(self, collection_name: str, ids: Optional[List]) -> bool:
         pass
     
+    @abstractmethod
+    def get_collection_info(self, collection_name: str) -> Dict[str, Any]:
+        pass
+    
+    @abstractmethod
+    def delete_collection(self, collection_name: str) -> bool:
+        pass
+    

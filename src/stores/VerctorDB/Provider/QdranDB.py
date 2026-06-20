@@ -216,7 +216,9 @@ class QdrandDB(VectorDBInterface):
         if not ids:
             self.logger.warning("Delete called with an empty list of IDs.")
             return False
-        
+        if not self.is_collection_exists(collection_name=collection_name):
+            self.logger.error(f"Collection {collection_name} does not exist.")
+            return False
         _ = self.client.delete(
             collection_name=collection_name,
             points_selector=PointIdsList(
@@ -224,4 +226,28 @@ class QdrandDB(VectorDBInterface):
             )
         )
         self.logger.info(f"Successfully deleted {len(ids)} points from {collection_name}")
+        return True
+    def get_collection_info(self, collection_name: str) -> Dict[str, Any]:
+        if not self.client:
+            self.logger.error("Ensure of the DB client")
+            raise ValueError("Database client is not connected. Call connect() first.")
+
+        if not self.is_collection_exists(collection_name=collection_name):
+            self.logger.error(f"There is no collection with this Name: {collection_name}")
+            return {}
+
+        collection_info = self.client.get_collection(collection_name=collection_name)
+        return collection_info.dict() if collection_info else {}
+    
+    def delete_collection(self, collection_name: str) -> bool:
+        if not self.client:
+            self.logger.error("Ensure of the DB client")
+            raise ValueError("Database client is not connected. Call connect() first.")
+
+        if not self.is_collection_exists(collection_name=collection_name):
+            self.logger.error(f"There is no collection with this Name: {collection_name}")
+            return False
+
+        self.client.delete_collection(collection_name=collection_name)
+        self.logger.info(f"Successfully deleted collection {collection_name}")
         return True
