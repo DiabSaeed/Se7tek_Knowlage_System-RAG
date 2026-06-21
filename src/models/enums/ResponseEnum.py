@@ -7,3 +7,4 @@ class ResponseEnums(Enum):
     FILE_UPLOADED_FIELD = "File Field"
     PROCESS_STARTED_SUCCE = "process_started_successfully"
     ProjectNotfoundERROR = "Project Not Found"
+    IndexingFailedERROR = "Indexing Failed"
