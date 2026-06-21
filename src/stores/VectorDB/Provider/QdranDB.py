@@ -6,7 +6,7 @@ from typing import cast, List,Dict, Any, Optional
 import uuid
 import logging
 
-class QdrandDB(VectorDBInterface):
+class QdrantDB(VectorDBInterface):
     def __init__(self, distance_mode: str, db_path: str):
         
         self.db_path = db_path
@@ -78,7 +78,7 @@ class QdrandDB(VectorDBInterface):
             self.logger.error("Ensure of the DB client")
             raise ValueError("Database client is not connected. Call connect() first.")
     
-    def insert_one_vector(self, vector: List[float], text:str, collection_name: str, metadata: str, id : str, embedding_size: int) -> bool:
+    def insert_one_vector(self, vector: List[float], text:str, collection_name: str, metadata: Dict[str, Any], id : str, embedding_size: int) -> bool:
         if not self.client:
 
             self.logger.error("Ensure of the DB client")

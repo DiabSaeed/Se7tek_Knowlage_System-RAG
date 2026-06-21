@@ -24,7 +24,7 @@ class VectorDBInterface(ABC):
         pass
     
     @abstractmethod
-    def insert_one_vector(self, vector: List[float], text:str, collection_name: str, metadata: str, id : str, embedding_size: int) -> bool:
+    def insert_one_vector(self, vector: List[float], text:str, collection_name: str, metadata: Dict[str, Any], id : str, embedding_size: int) -> bool:
         pass
     
     @abstractmethod
