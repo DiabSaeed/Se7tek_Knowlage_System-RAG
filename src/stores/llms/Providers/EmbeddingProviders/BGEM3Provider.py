@@ -3,6 +3,8 @@ from FlagEmbedding import BGEM3FlagModel
 from ...EmbeddingInterface import EmbeddingInterface
 import re
 import tiktoken
+from typing import List, cast
+import numpy as np
 
 class BGEM3Provider(EmbeddingInterface):
     def __init__(self):
@@ -49,7 +51,39 @@ class BGEM3Provider(EmbeddingInterface):
         except Exception as e:
             self.logger.error(f"Error during text embedding with BGE-M3: {e}")
             return None
+    
+    
+    def embed_texts(self, texts: List[str], doc_type = None) -> List[list]:
+        if not self.embed_model:
+            self.logger.error("BGE-M3 model is not loaded. Please call set_embedding_model() first.")
+            return []
+            
+        cleaned_texts = [self.process_text(text) for text in texts if text and text.strip()]
         
+        if not cleaned_texts:
+            self.logger.warning("No valid or non-empty texts provided for embedding.")
+            return []
+
+        try:
+            embeddings = self.embed_model.encode(
+                cleaned_texts, 
+                return_dense=True, 
+                return_sparse=False, 
+                return_colbert_vecs=False
+            )
+            dense_vecs_list = cast(List[np.ndarray], embeddings['dense_vecs'])
+            
+            dense_vectors = [vec.tolist() for vec in dense_vecs_list]
+            
+            if self.embedding_size and dense_vectors and len(dense_vectors[0]) != self.embedding_size:
+                self.logger.warning(f"Expected embedding size {self.embedding_size}, but got {len(dense_vectors[0])}")
+                
+            return dense_vectors
+            
+        except Exception as e:
+            self.logger.error(f"Error during batch text embedding with BGE-M3: {e}")
+            return []
+    
     def process_text(self, text: str):
         
         if not text:
@@ -69,4 +103,3 @@ class BGEM3Provider(EmbeddingInterface):
             encoding = tiktoken.get_encoding("cl100k_base")
         tokens = encoding.encode(text)
         return len(tokens)
-    

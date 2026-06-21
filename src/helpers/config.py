@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     VECTOR_DB_BACKEND : str 
     VECTOR_DB_PATH : str 
     VECTOR_DB_DIStANCE : str 
- 
-    model_config = SettingsConfigDict(env_file=".env")
+    hf_token: str
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 def get_settings():
     return Settings() # type: ignore
