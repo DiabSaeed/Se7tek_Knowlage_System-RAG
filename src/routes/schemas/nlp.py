@@ -3,4 +3,5 @@ from typing import List, Optional
 
 class PushRequest(BaseModel):
     do_reset: Optional[int] = Field(description="Whether to reset existing data (1 for true, 0 for false)", default=0)
+    page_size: int = Field(description="Number of chunks to process per page", default=10)
     
