@@ -5,6 +5,9 @@ from motor import motor_asyncio
 from helpers.config import Settings
 from stores.llms import LlmFactory
 from stores.VectorDB import VectorFactory
+from stores.llms.templates import PromptParser
+from controllers.NlpController import NlpController
+from stores.llms.GenerationInterface import GenerationInterface
 import os
 from dotenv import load_dotenv
 
@@ -33,12 +36,33 @@ async def lifespan(app: FastAPI):
     qdrant_db = vector_provide_factory.create(settings.VECTOR_DB_BACKEND)
     qdrant_db.connect()
     
+    # Template Parser
+    prompt_parser = PromptParser(locale=settings.DEFAULT_LANGUAGE)
+    
+    if not embedding_client:
+        raise ValueError("Failed to initialize Embedding Client. Check your Factory config.")
+    if not generation_client:
+        raise ValueError("Failed to initialize Generation Client. Check your Factory config.")
+    if not qdrant_db:
+        raise ValueError("Failed to initialize Vector DB. Check your Factory config.")
+    if not isinstance(generation_client, GenerationInterface):
+        raise TypeError("Generation client does not implement GenerationInterface")
+    # NlpController
+    nlp_controller = NlpController(
+        vector_client=qdrant_db,
+        embedding_client= embedding_client,
+        generation_client=generation_client,
+        prompt_parser=prompt_parser
+    )
+    
     yield {
         "connection": connection,
         "Database": client,
         "generation_client": generation_client,
         "embedding_client" : embedding_client,
-        "vector_db": qdrant_db
+        "vector_db": qdrant_db,
+        "prompt_parser": prompt_parser,
+        "nlp_controller": nlp_controller
            }
     connection.close()
     
