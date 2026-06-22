@@ -1,5 +1,5 @@
 from .BaseController import BaseController
-from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+from langchain_text_splitters import Language, MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 import logging
 
@@ -25,13 +25,22 @@ class ChunckingController(BaseController):
     def chunk_splitter(self, langchain_docs: list[Document]):
         final_chunks = []
         
+        markdown_splitter = RecursiveCharacterTextSplitter.from_language(
+            language=Language.MARKDOWN,
+            chunk_size=1500,   
+            chunk_overlap=150   
+        )
+        
         for doc in langchain_docs:
             try:
                 header_splits = self.mark_down_splitter.split_text(doc.page_content)
+                
                 for split in header_splits:
                     combined_metadata = doc.metadata.copy()
                     combined_metadata.update(split.metadata)
-                    sub_chunks = self.text_splitter.split_text(split.page_content)
+                    
+                    sub_chunks = markdown_splitter.split_text(split.page_content)
+                    
                     for chunk_text in sub_chunks:
                         final_chunks.append(
                             Document(
