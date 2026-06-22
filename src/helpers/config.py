@@ -29,7 +29,11 @@ class Settings(BaseSettings):
     VECTOR_DB_BACKEND : str 
     VECTOR_DB_PATH : str 
     VECTOR_DB_DIStANCE : str 
-    hf_token: str
+    HF_TOKEN: str
+    
+    DEFAULT_LANGUAGE: str
+    
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 def get_settings():
