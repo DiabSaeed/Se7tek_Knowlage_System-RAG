@@ -192,11 +192,8 @@ class QdrantDB(VectorDBInterface):
             payload = hit.payload or {} 
             
             formatted_results.append({
-                "id": hit.id,
                 "score": hit.score,
                 "text": payload.get("text", ""),
-                "metadata": payload.get("metadata", ""),
-                "embedding_size": payload.get("embedding_size", 0)
             })
 
         return formatted_results

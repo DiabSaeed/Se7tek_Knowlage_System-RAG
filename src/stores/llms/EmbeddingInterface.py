@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 class EmbeddingInterface(ABC):
     
@@ -11,5 +12,12 @@ class EmbeddingInterface(ABC):
         pass
     
     @abstractmethod
+    def embed_texts(self, texts: List[str], doc_type = None) -> List[list]:
+        pass
+    @abstractmethod
     def count_tokens(self, text: str) -> int:
         pass 
+    
+    @abstractmethod
+    def process_text(self, text: str) -> str:
+        pass
