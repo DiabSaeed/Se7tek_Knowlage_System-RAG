@@ -10,4 +10,9 @@ class SearchRequest(BaseModel):
     top_k: int = Field(description="Number of top results to return", default=5)
     doc_type: Optional[str] = Field(description="Type of document for embedding", default="text")
     filters: Optional[dict] = Field(description="Filters to apply during the search", default=None)
-    
+
+
+class GenerateRequest(BaseModel):
+    query: str = Field(description="The prompt text for text generation")
+    temperature: Optional[float] = Field(description="Sampling temperature for generation", default=0.1)
+    max_tokens: Optional[int] = Field(description="Maximum number of tokens to generate", default=1000)

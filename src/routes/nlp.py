@@ -4,7 +4,7 @@ from helpers.config import Settings, get_settings
 from models import ResponseEnums, AssetsEnum
 from models.ProjectModel import ProjectModel
 from models.ChunkModel import ChunkModel
-from .schemas.nlp import PushRequest, SearchRequest
+from .schemas.nlp import PushRequest, SearchRequest, GenerateRequest
 from controllers.NlpController import NlpController
 import logging
 
@@ -36,14 +36,7 @@ async def push_index(project_id: str,
             }
         )
     
-    vector_client = request.state.vector_db
-    embedding_client = request.state.embedding_client
-    generation_client = request.state.generation_client
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= embedding_client,
-        generation_client=generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     chunk_model = await ChunkModel.create_instance(db_client=request.state.Database)
     
     page_no = 1
@@ -81,12 +74,7 @@ async def push_index(project_id: str,
     
 @nlp_router.get("/collections")
 async def get_collections(request:Request):
-    vector_client = request.state.vector_db
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= request.state.embedding_client,
-        generation_client=request.state.generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     collections = nlp_controller.get_all_collections()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -98,12 +86,8 @@ async def get_collections(request:Request):
 
 @nlp_router.get("/collections/{project_id}")
 async def get_collection_info(project_id: str, request:Request):
-    vector_client = request.state.vector_db
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= request.state.embedding_client,
-        generation_client=request.state.generation_client
-    )
+    nlp_controller = request.state.nlp_controller
+
     project_model = await ProjectModel.create_instance(
         db_client= request.state.Database
     )
@@ -127,15 +111,8 @@ async def get_collection_info(project_id: str, request:Request):
 
 @nlp_router.post("/search/{project_id}")
 def search_vectors(project_id: str, request_data: SearchRequest, request: Request):
-    vector_client = request.state.vector_db
     embedding_client = request.state.embedding_client
-    generation_client = request.state.generation_client
-    
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client=embedding_client,
-        generation_client=generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     
     query_vector = embedding_client.embed_text(text=request_data.query_text, doc_type=request_data.doc_type)
     
@@ -155,3 +132,42 @@ def search_vectors(project_id: str, request_data: SearchRequest, request: Reques
         }
     )
     
+
+@nlp_router.post("/generate/{project_id}")
+def generate_text(project_id: str, request_data: GenerateRequest, request: Request):
+    
+    nlp_controller = request.state.nlp_controller
+    query = request_data.query 
+    if not query:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "status": "error",
+                "message": "Prompt text is required for generation."
+            }
+        )
+    prompt_structured = nlp_controller.build_rag_prompt(
+        query=query,
+        project_id = project_id,
+    )
+    generated_text = nlp_controller.generate_text(
+        prompt=prompt_structured,
+        temperature=request_data.temperature,
+        max_tokens=request_data.max_tokens
+    )
+    
+    if generated_text is None:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": ResponseEnums.GenerationFailedERROR.value,
+                "message": "Text generation failed."
+            }
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
+            "generated_text": generated_text
+        }
+    )
