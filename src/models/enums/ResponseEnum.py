@@ -9,3 +9,4 @@ class ResponseEnums(Enum):
     ProjectNotfoundERROR = "Project Not Found"
     IndexingFailedERROR = "Indexing Failed"
     CollectionNotFoundERROR = "Collection Not Found"
+    GenerationFailedERROR = "Generation Failed"
