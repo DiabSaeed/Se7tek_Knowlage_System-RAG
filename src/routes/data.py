@@ -115,7 +115,7 @@ async def process_file(
         process_controller = ProcessControler(project_id=project_id)
         
         file_content = await process_controller.content_transformation(file_path=file_path)
-        chunking = ChunckingController(chunk_size=chunk_size, recursive_chars=chunk_overlab)
+        chunking = ChunckingController(chunk_size=chunk_size)
         file_chunks = chunking.chunk_splitter(file_content)
         
         if file_chunks is None or len(file_chunks) == 0:
