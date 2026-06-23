@@ -14,6 +14,8 @@ class VectorFactory:
             db_complete_path = self.path.get_database_path(db_name= self.config.VECTOR_DB_PATH)
             return QdrantDB(
                 db_path=db_complete_path ,
-                distance_mode=self.config.VECTOR_DB_DIStANCE
+                distance_mode=self.config.VECTOR_DB_DIStANCE,
+                sparse_model= self.config.VECTOR_SPARSE_MODEL,
+                cross_encoder_model= self.config.CROSS_ENCODER_MODEL
             )
         raise ValueError(f"Unsupported Vector DB backend: {provider}")

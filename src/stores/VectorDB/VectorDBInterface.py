@@ -39,7 +39,7 @@ class VectorDBInterface(ABC):
         pass
     
     @abstractmethod
-    def search(self, collection_name: str, query_vector: List[float], top_k: int = 5,filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def search(self, collection_name: str, query_vector: List[float],query_text, top_k: int = 5,filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         pass
     
     @abstractmethod

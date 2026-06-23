@@ -1,18 +1,26 @@
-from qdrant_client.models import Distance, PointStruct, PointIdsList, VectorParams, Filter, MatchValue, FieldCondition
+from qdrant_client.models import (
+    Distance, PointStruct, PointIdsList, VectorParams, Filter, MatchValue, 
+    FieldCondition, SparseVectorParams, SparseIndexParams, SparseVector, 
+    Prefetch, FusionQuery, Fusion
+)
 from qdrant_client import QdrantClient
+from fastembed import SparseTextEmbedding
+from sentence_transformers import CrossEncoder
 from ..VectorDBInterface import VectorDBInterface
-from ..Enums.VectorEnums import DistanceEnums
+from ..Enums.VectorEnums import DistanceEnums, QdrantEnums
 from typing import cast, List,Dict, Any, Optional
 import uuid
 import logging
 
 class QdrantDB(VectorDBInterface):
-    def __init__(self, distance_mode: str, db_path: str):
+    def __init__(self, cross_encoder_model: str ,sparse_model: str,distance_mode: str, db_path: str):
         
         self.db_path = db_path
         self.client = None
         self.client = cast(QdrantClient,self.client)
         self.logger = logging.getLogger(__name__)
+        self.sparse_embedding_model = SparseTextEmbedding(model_name= sparse_model)
+        self.cross_encoder = CrossEncoder(cross_encoder_model)
         moder_dis  = distance_mode.lower().strip()
         
         self.distance_mode : Distance
@@ -23,7 +31,7 @@ class QdrantDB(VectorDBInterface):
             self.distance_mode = Distance.COSINE
         else:
              self.distance_mode = Distance.COSINE
-            
+        
     def connect(self):
         self.client = QdrantClient(path=self.db_path)
     
@@ -63,7 +71,12 @@ class QdrantDB(VectorDBInterface):
                 vectors_config=VectorParams(
                     size=embedding_size,
                     distance= self.distance_mode
-                )
+                ),
+                sparse_vectors_config={
+                    "sparse" : SparseVectorParams(
+                        index= SparseIndexParams(on_disk=False)
+                    )
+                }
             )
         else:
             self.logger.error("Ensure of the DB client")
@@ -135,6 +148,8 @@ class QdrantDB(VectorDBInterface):
             self.logger.error(f"There is no collection with this Name: {collection_name}")
 
             return False
+        
+        sparse_embeddings = list(self.sparse_embedding_model.embed(texts))
         lengths = [len(vectors), len(texts), len(metadatas), len(ids), len(embedding_sizes)]
         if len(set(lengths)) > 1:
             self.logger.warning("Mismatched list lengths in bulk insert.")
@@ -151,11 +166,17 @@ class QdrantDB(VectorDBInterface):
         } for metadata, text, embedding_size in zip(metadatas,texts,embedding_sizes) ]
         points = [
             PointStruct(
-                vector= vector,
+                vector= {
+                    "": dense_vec,
+                    "sparse":SparseVector(
+                        indices= sparse_vec.indices.tolist(),
+                        values= sparse_vec.values.tolist()
+                    )
+                    },
                 payload= payload,
                 id = id
             )
-            for vector, payload, id in zip(vectors, payloads, ids)
+            for dense_vec,sparse_vec, payload, id in zip(vectors, sparse_embeddings, payloads, ids)
         ]
         _ = self.client.upload_points(
             collection_name= collection_name,
@@ -166,7 +187,7 @@ class QdrantDB(VectorDBInterface):
         )
         return True
     
-    def search(self, collection_name: str, query_vector: List[float], top_k: int = 5,filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def search(self, collection_name: str, query_vector: List[float],query_text:str, top_k: int = 12,filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         if not self.client:
 
             self.logger.error("Ensure of the DB client")
@@ -178,11 +199,26 @@ class QdrantDB(VectorDBInterface):
             self.logger.error(f"There is no collection with this Name: {collection_name}")
 
             return []
+        sparse_query = list(self.sparse_embedding_model.query_embed(query_text))[0]
         qadrant_filters = self._conver_filter_dict_to_Filter(filters=filters)
         search_results = self.client.query_points(
             collection_name= collection_name,
+            prefetch=[Prefetch(
             query= query_vector,
-            limit= top_k,
+            using="",
+            limit= round(QdrantEnums.FETCH_K.value * 1.5) ,
+            ),
+                      Prefetch(
+                          query= SparseVector(
+                              indices= sparse_query.indices.tolist(),
+                              values= sparse_query.values.tolist()
+                          ),
+                          using="sparse",
+                          limit= QdrantEnums.FETCH_K.value,
+                      )
+                      ],
+            limit= QdrantEnums.FETCH_K.value,
+            query= FusionQuery(fusion= Fusion.RRF),
             with_payload= True,
             with_vectors= False,
             query_filter= qadrant_filters
@@ -195,8 +231,12 @@ class QdrantDB(VectorDBInterface):
                 "score": hit.score,
                 "text": payload.get("text", ""),
             })
-
-        return formatted_results
+        pairs = [[query_text, doc["text"]] for doc in formatted_results]
+        cross_scores = self.cross_encoder.predict(pairs)
+        for i in range(len(formatted_results)):
+               formatted_results[i]["cross_score"] = float(cross_scores[i])
+        reranked_results = sorted(formatted_results, key=lambda x: x["cross_score"], reverse=True)
+        return reranked_results[:top_k]
     
     def delete(self, collection_name: str, ids: Optional[List]) -> bool:
         if not self.client:
