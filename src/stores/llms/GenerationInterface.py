@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from typing import Optional
+
 class GenerationInterface(ABC):
     
     @abstractmethod
@@ -7,5 +9,9 @@ class GenerationInterface(ABC):
         pass
     
     @abstractmethod
-    def generate_text(self, prompt: str, chat_history: list , temperature:float = .1, max_tokens: int = 1000 ) -> str | None:
+    def generate_response(self, messages: list, temperature: float|None = None, max_tokens: int | None = None) -> str | None:
+        pass
+    
+    @abstractmethod
+    def count_tokens(self, text: str) -> int:
         pass

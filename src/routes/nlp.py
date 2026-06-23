@@ -4,7 +4,7 @@ from helpers.config import Settings, get_settings
 from models import ResponseEnums, AssetsEnum
 from models.ProjectModel import ProjectModel
 from models.ChunkModel import ChunkModel
-from .schemas.nlp import PushRequest, SearchRequest
+from .schemas.nlp import PushRequest, SearchRequest, GenerateRequest
 from controllers.NlpController import NlpController
 import logging
 
@@ -36,17 +36,16 @@ async def push_index(project_id: str,
             }
         )
     
-    vector_client = request.state.vector_db
-    embedding_client = request.state.embedding_client
-    generation_client = request.state.generation_client
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= embedding_client,
-        generation_client=generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     chunk_model = await ChunkModel.create_instance(db_client=request.state.Database)
-    
+    should_reset = str(push_request.do_reset).strip().lower() in ['1', 'true', 'yes']
+    if should_reset:
+        nlp_controller.reset_collection(project.project_id)
+        logger.info(f"Collection for project {project_id} has been reset successfully.")
+    import time
+    time.sleep(3)
     page_no = 1
+    actual_inserted = 0
     has_more_chunks = True
     while has_more_chunks:
         chunks, total_pages = await chunk_model.get_chunks_related_to_project(project_id=str(project.id), page_no=page_no)
@@ -54,11 +53,10 @@ async def push_index(project_id: str,
             has_more_chunks = False
             break
         page_no += 1
-        
+        actual_inserted += len(chunks)
         is_inserted = nlp_controller.index_into_vector_db(
             project=project,
             chunks=chunks,
-            do_reset=bool(push_request.do_reset)
         )
         
         if not is_inserted:
@@ -75,18 +73,13 @@ async def push_index(project_id: str,
         content={
             "status": ResponseEnums.PROCESS_STARTED_SUCCE.value,
             "message": f"Indexing process for project {project_id} has been started successfully.",
-            "inserted_chunks": int(page_no) * int(push_request.page_size)
+            "inserted_chunks": actual_inserted
         }
     )
     
 @nlp_router.get("/collections")
 async def get_collections(request:Request):
-    vector_client = request.state.vector_db
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= request.state.embedding_client,
-        generation_client=request.state.generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     collections = nlp_controller.get_all_collections()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -98,12 +91,8 @@ async def get_collections(request:Request):
 
 @nlp_router.get("/collections/{project_id}")
 async def get_collection_info(project_id: str, request:Request):
-    vector_client = request.state.vector_db
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client= request.state.embedding_client,
-        generation_client=request.state.generation_client
-    )
+    nlp_controller = request.state.nlp_controller
+
     project_model = await ProjectModel.create_instance(
         db_client= request.state.Database
     )
@@ -127,15 +116,8 @@ async def get_collection_info(project_id: str, request:Request):
 
 @nlp_router.post("/search/{project_id}")
 def search_vectors(project_id: str, request_data: SearchRequest, request: Request):
-    vector_client = request.state.vector_db
     embedding_client = request.state.embedding_client
-    generation_client = request.state.generation_client
-    
-    nlp_controller = NlpController(
-        vector_client=vector_client,
-        embedding_client=embedding_client,
-        generation_client=generation_client
-    )
+    nlp_controller = request.state.nlp_controller
     
     query_vector = embedding_client.embed_text(text=request_data.query_text, doc_type=request_data.doc_type)
     
@@ -144,7 +126,8 @@ def search_vectors(project_id: str, request_data: SearchRequest, request: Reques
         project_id=project_id,
         query_vector=query_vector,
         filters=request_data.filters,
-        top_k=request_data.top_k
+        top_k=request_data.top_k,
+        query_text= request_data.query_text
     )
     
     return JSONResponse(
@@ -155,3 +138,54 @@ def search_vectors(project_id: str, request_data: SearchRequest, request: Reques
         }
     )
     
+
+@nlp_router.post("/generate/{project_id}")
+def generate_text(project_id: str, request_data: GenerateRequest, request: Request):
+    
+    nlp_controller = request.state.nlp_controller
+    query = request_data.query 
+    if not query:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "status": "error",
+                "message": "Prompt text is required for generation."
+            }
+        )
+    prompt_structured = nlp_controller.build_rag_prompt(
+        query=query,
+        project_id = project_id,
+    )
+    generated_text = nlp_controller.generate_text(
+        prompt=prompt_structured,
+        temperature=request_data.temperature,
+        max_tokens=request_data.max_tokens
+    )
+    
+    if generated_text is None:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": ResponseEnums.GenerationFailedERROR.value,
+                "message": "Text generation failed."
+            }
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
+            "generated_text": generated_text
+        }
+    )
+    
+@nlp_router.get("/rest_collections/{project_id}")
+def rest_collections(project_id, request: Request):
+    nlp_controller = request.state.nlp_controller
+    _ = nlp_controller.reset_collection(project_id)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
+        }
+    )

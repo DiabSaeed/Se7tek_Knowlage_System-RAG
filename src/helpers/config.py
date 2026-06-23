@@ -29,7 +29,13 @@ class Settings(BaseSettings):
     VECTOR_DB_BACKEND : str 
     VECTOR_DB_PATH : str 
     VECTOR_DB_DIStANCE : str 
-    hf_token: str
+    VECTOR_SPARSE_MODEL: str
+    CROSS_ENCODER_MODEL: str
+    HF_TOKEN: str
+    
+    DEFAULT_LANGUAGE: str
+    
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 def get_settings():

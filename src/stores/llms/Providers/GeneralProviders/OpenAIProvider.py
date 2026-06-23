@@ -1,3 +1,5 @@
+from typing import List
+
 from openai import OpenAI
 from ...GenerationInterface import GenerationInterface
 from ...EmbeddingInterface import EmbeddingInterface
@@ -35,32 +37,26 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
         self.embedings_model_id = model_id
         self.embedings_size = embeding_size 
         
-    def generate_text(self, prompt: str, chat_history: list | None = None , temperature: float = .1, max_tokens: int = 1000) -> str | None:
-        if chat_history is None:
-            chat_history = []
-            
+    def generate_response(self, messages: list, temperature: float|None = None, max_tokens: int|None = None) -> str | None:
+       
         if not self.client:
             self.logger.error("OpenAI Client is not initialized") 
-            
             return None
+            
         if not self.generation_model_id:
             self.logger.error("Generation model for OpenAI not set")
             return None
         
+        # إعدادات الموديل
         max_output_tokens = max_tokens if max_tokens else self.default_generation_max_tokens
         temp = temperature if temperature is not None else self.default_generation_temperature
-        
-        chat_history.append(self.construct_prompt(
-            prompt=prompt,
-            role=OpenAiEnums.USER.value
-        ))
         
         try:
             response = self.client.chat.completions.create(
                 model=self.generation_model_id,
                 temperature=temp,
                 max_tokens=max_output_tokens,
-                messages=chat_history
+                messages=messages
             )
             
             if not response or not response.choices or len(response.choices) == 0 or not response.choices[0].message:
@@ -103,6 +99,9 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
             "content": self.process_text(prompt) 
         }
     
+    def embed_texts(self, texts: List[str], doc_type=None) -> List[list]:
+        raise NotImplementedError("Batch embedding is not implemented in OpenaiProvider. Use embed_text for individual text embedding.")
+    
     def count_tokens(self, text: str):
         if not text:
             return 0
@@ -115,4 +114,4 @@ class OpenaiProvider(GenerationInterface, EmbeddingInterface):
         return len(tokens)
     
     def process_text(self, text: str):
-        return text[:self.input_max_characters].strip()
+        return text[:self.input_max_characters]

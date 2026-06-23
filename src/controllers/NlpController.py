@@ -1,19 +1,21 @@
 from .BaseController import BaseController
-from stores.VectorDB.Provider.QdranDB import QdrantDB
-from stores.llms.Providers.GeneralProviders.OpenAIProvider import OpenaiProvider
-from stores.llms.Providers.EmbeddingProviders.BGEM3Provider import BGEM3Provider
+from stores.llms.EmbeddingInterface import EmbeddingInterface
+from stores.llms.GenerationInterface import GenerationInterface
+from stores.VectorDB.VectorDBInterface import VectorDBInterface
 from models.db_schema import ProjectSchema, ChunkSchema
 from models.enums.DocumentTypeEnums import DocumentTypeEnums
+from stores.llms.templates import PromptParser
 from typing import List, Optional, Dict, Any, cast
 import logging
 import uuid
 
 class NlpController(BaseController):
-    def __init__(self, vector_client: QdrantDB, embedding_client: BGEM3Provider, generation_client: OpenaiProvider):
+    def __init__(self, vector_client: VectorDBInterface, embedding_client: EmbeddingInterface, generation_client: GenerationInterface, prompt_parser: PromptParser):
         super().__init__()
         self.vector_client = vector_client
         self.embedding_client = embedding_client
         self.generation_client = generation_client
+        self.prompt_parser = prompt_parser
         self.logger = logging.getLogger(__name__)
     
     def create_collection_name(self, project_id: str) -> str:
@@ -34,6 +36,8 @@ class NlpController(BaseController):
         collection_name = self.create_collection_name(project_id)
         if not self.vector_client.is_collection_exists(collection_name):
             self.vector_client.create_collection(collection_name=collection_name, embedding_size=embedding_size)
+            info = self.vector_client.get_collection_info(collection_name)
+            print(info)
             return True
         self.logger.warning(f"Collection {collection_name} already exists.")
         return False
@@ -56,12 +60,12 @@ class NlpController(BaseController):
             vectors=vectors, texts=texts, collection_name=collection_name, metadatas=metadatas, ids=ids, embedding_sizes=embedding_sizes, batch_size=batch_size, parallel=parallel
         )
     
-    def search_vectors(self, project_id: str, query_vector: list, filters: Optional[Dict[str, Any]], top_k: int = 5) -> list:
+    def search_vectors(self, project_id: str, query_vector: list, query_text, filters: Optional[Dict[str, Any]], top_k: int = 5) -> list:
         collection_name = self.create_collection_name(project_id)
         if not self.vector_client.is_collection_exists(collection_name):
             self.logger.error(f"Collection {collection_name} does not exist.")
             return []
-        return self.vector_client.search(collection_name=collection_name, query_vector=query_vector, top_k=top_k, filters=filters)
+        return self.vector_client.search(collection_name=collection_name, query_vector=query_vector, query_text=query_text, top_k=top_k, filters=filters)
     
     def get_collection_info(self, project_id: str) -> dict:
         collection_name = self.create_collection_name(project_id)
@@ -73,12 +77,8 @@ class NlpController(BaseController):
     def get_all_collections(self) -> list:
         return self.vector_client.get_all_collections()
     
-    def index_into_vector_db(self, project: ProjectSchema, chunks: List[ChunkSchema], do_reset: bool, doc_type: Optional[str] = None) -> bool:
+    def index_into_vector_db(self, project: ProjectSchema, chunks: List[ChunkSchema], doc_type: Optional[str] = None) -> bool:
         collection_name = self.create_collection_name(project.project_id)
-        
-        if do_reset:
-            self.reset_collection(project_id=project.project_id)
-            
         if not self.vector_client.is_collection_exists(collection_name):
             self.create_collection(project_id=project.project_id)
             
@@ -114,8 +114,8 @@ class NlpController(BaseController):
     # ==========================================
     # Generation Operations
     # ==========================================
-    def generate_text(self, prompt: str, chat_history: Optional[list] = None, temperature: float = 0.1, max_tokens: int = 1000) -> Optional[str]:
-        return self.generation_client.generate_text(prompt=prompt, chat_history=chat_history, temperature=temperature, max_tokens=max_tokens)
+    def generate_text(self, prompt: List[str], chat_history: Optional[list] = None, temperature: float = 0.1, max_tokens: int = 1000) -> Optional[str]:
+        return self.generation_client.generate_response(messages=prompt, temperature=temperature, max_tokens=max_tokens)
     
     def count_tokens(self, text: str) -> int:
         return self.generation_client.count_tokens(text=text)
@@ -131,3 +131,23 @@ class NlpController(BaseController):
     
     def embed_texts(self, texts: List[str], doc_type: Optional[str] = None) -> List[list]:
         return self.embedding_client.embed_texts(texts=texts, doc_type=doc_type)
+    
+    # ==========================================
+    # Prompt Operations
+    # ==========================================
+    def build_rag_prompt(self, query: str,project_id: str, tone: str = "professional") -> list:
+        if not self.vector_client.is_collection_exists(self.create_collection_name(project_id=project_id)):
+            self.logger.error(f"Collection for project {project_id} does not exist.")
+            return []
+        query_vector = self.embed_text(text=query)
+        if not query_vector:
+            self.logger.error("Failed to generate embedding for the query.")
+            return []
+        context_chunks = self.vector_client.search(collection_name=self.create_collection_name(project_id=project_id),
+                                                   query_vector=query_vector,
+                                                   query_text= query,
+                                                   top_k=10)
+        clean_texts = [hit["text"] for hit in context_chunks]
+        messages = self.prompt_parser.build_rag_prompt(query=query, context_chunks=clean_texts)
+        print(f"--- Prepared Messages for LLM: {messages} ---")
+        return messages
