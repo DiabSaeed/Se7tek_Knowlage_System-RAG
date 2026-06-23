@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/Se7tek_logo.png" alt="Se7tek Logo">
+  <img src="src/assets/Se7tek_logo.png" alt="Se7tek Logo">
   # Sehatek Medical KNOWLEDGE RAG 🩺🚀
 
   <p>
