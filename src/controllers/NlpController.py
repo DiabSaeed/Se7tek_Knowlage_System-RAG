@@ -36,6 +36,8 @@ class NlpController(BaseController):
         collection_name = self.create_collection_name(project_id)
         if not self.vector_client.is_collection_exists(collection_name):
             self.vector_client.create_collection(collection_name=collection_name, embedding_size=embedding_size)
+            info = self.vector_client.get_collection_info(collection_name)
+            print(info)
             return True
         self.logger.warning(f"Collection {collection_name} already exists.")
         return False
@@ -58,12 +60,12 @@ class NlpController(BaseController):
             vectors=vectors, texts=texts, collection_name=collection_name, metadatas=metadatas, ids=ids, embedding_sizes=embedding_sizes, batch_size=batch_size, parallel=parallel
         )
     
-    def search_vectors(self, project_id: str, query_vector: list, filters: Optional[Dict[str, Any]], top_k: int = 5) -> list:
+    def search_vectors(self, project_id: str, query_vector: list, query_text, filters: Optional[Dict[str, Any]], top_k: int = 5) -> list:
         collection_name = self.create_collection_name(project_id)
         if not self.vector_client.is_collection_exists(collection_name):
             self.logger.error(f"Collection {collection_name} does not exist.")
             return []
-        return self.vector_client.search(collection_name=collection_name, query_vector=query_vector, top_k=top_k, filters=filters)
+        return self.vector_client.search(collection_name=collection_name, query_vector=query_vector, query_text=query_text, top_k=top_k, filters=filters)
     
     def get_collection_info(self, project_id: str) -> dict:
         collection_name = self.create_collection_name(project_id)
@@ -75,12 +77,8 @@ class NlpController(BaseController):
     def get_all_collections(self) -> list:
         return self.vector_client.get_all_collections()
     
-    def index_into_vector_db(self, project: ProjectSchema, chunks: List[ChunkSchema], do_reset: bool, doc_type: Optional[str] = None) -> bool:
+    def index_into_vector_db(self, project: ProjectSchema, chunks: List[ChunkSchema], doc_type: Optional[str] = None) -> bool:
         collection_name = self.create_collection_name(project.project_id)
-        
-        if do_reset:
-            self.reset_collection(project_id=project.project_id)
-            
         if not self.vector_client.is_collection_exists(collection_name):
             self.create_collection(project_id=project.project_id)
             
@@ -147,6 +145,7 @@ class NlpController(BaseController):
             return []
         context_chunks = self.vector_client.search(collection_name=self.create_collection_name(project_id=project_id),
                                                    query_vector=query_vector,
+                                                   query_text= query,
                                                    top_k=10)
         clean_texts = [hit["text"] for hit in context_chunks]
         messages = self.prompt_parser.build_rag_prompt(query=query, context_chunks=clean_texts)

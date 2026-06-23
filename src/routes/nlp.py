@@ -38,8 +38,14 @@ async def push_index(project_id: str,
     
     nlp_controller = request.state.nlp_controller
     chunk_model = await ChunkModel.create_instance(db_client=request.state.Database)
-    
+    should_reset = str(push_request.do_reset).strip().lower() in ['1', 'true', 'yes']
+    if should_reset:
+        nlp_controller.reset_collection(project.project_id)
+        logger.info(f"Collection for project {project_id} has been reset successfully.")
+    import time
+    time.sleep(3)
     page_no = 1
+    actual_inserted = 0
     has_more_chunks = True
     while has_more_chunks:
         chunks, total_pages = await chunk_model.get_chunks_related_to_project(project_id=str(project.id), page_no=page_no)
@@ -47,11 +53,10 @@ async def push_index(project_id: str,
             has_more_chunks = False
             break
         page_no += 1
-        
+        actual_inserted += len(chunks)
         is_inserted = nlp_controller.index_into_vector_db(
             project=project,
             chunks=chunks,
-            do_reset=bool(push_request.do_reset)
         )
         
         if not is_inserted:
@@ -68,7 +73,7 @@ async def push_index(project_id: str,
         content={
             "status": ResponseEnums.PROCESS_STARTED_SUCCE.value,
             "message": f"Indexing process for project {project_id} has been started successfully.",
-            "inserted_chunks": int(page_no) * int(push_request.page_size)
+            "inserted_chunks": actual_inserted
         }
     )
     
@@ -121,7 +126,8 @@ def search_vectors(project_id: str, request_data: SearchRequest, request: Reques
         project_id=project_id,
         query_vector=query_vector,
         filters=request_data.filters,
-        top_k=request_data.top_k
+        top_k=request_data.top_k,
+        query_text= request_data.query_text
     )
     
     return JSONResponse(
@@ -169,5 +175,17 @@ def generate_text(project_id: str, request_data: GenerateRequest, request: Reque
         content={
             "status": "success",
             "generated_text": generated_text
+        }
+    )
+    
+@nlp_router.get("/rest_collections/{project_id}")
+def rest_collections(project_id, request: Request):
+    nlp_controller = request.state.nlp_controller
+    _ = nlp_controller.reset_collection(project_id)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "status": "success",
         }
     )
