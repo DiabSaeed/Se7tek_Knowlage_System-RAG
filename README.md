@@ -32,7 +32,7 @@ $ conda create -n knowlage-rag
 $ conda activate knowlage-rag
 ```
 
-## Installation
+## ⚙️ Installation
 
 ### install required packages
 
