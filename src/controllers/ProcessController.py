@@ -28,10 +28,11 @@ class ProcessControler(BaseController):
         with pymupdf.open(file_path) as doc_pages:
             for page in range(len(doc_pages)):
                 doc = doc_pages[page]
+                text = str(doc.get_text()).lower()
                 tables = doc.find_tables()
                 images = doc.get_image_info()
 
-                if (tables is not None and len(tables.tables) > 0) or len(images) > 0:
+                if (tables is not None and len(tables.tables) > 0) or len(images) > 0 or "table" in text:
                     complex_pages.append(page + 1)
                 else:
                     simple_pages.append(page + 1)
@@ -77,10 +78,18 @@ class ProcessControler(BaseController):
             
             try:
                 logger.info(f"--- DEBUG: Llama Key is {'FOUND' if self.config.LLAMA_PARSER_API_KEY else 'NOT FOUND'} ---")
+                instruction = (
+                    "You are parsing a highly complex medical research paper. "
+                    "For any tables you encounter, DO NOT format them as standard markdown tables (e.g. | col | col |). "
+                    "Instead, extract each row as a continuous, self-contained text block where the column header is explicitly repeated for every value. "
+                    "Example format: 'Study/Author: Gimenez et al, Model: RF, AUC: 0.94, Sensitivity: 0.80'. "
+                    "This is CRITICAL to preserve data context when the text is chunked later."
+                )
                 llama_parser = LlamaParse(
                     result_type=ResultType.MD,  
                     api_key=self.config.LLAMA_PARSER_API_KEY,
-                    verbose=True
+                    verbose=True,
+                    parsing_instruction=instruction
                 )
                 
                 llama_result = await llama_parser.aload_data(file_path=complex_pdfs)
