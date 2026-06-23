@@ -72,3 +72,13 @@ Unlike standard RAG implementations, the **Sehatek Knowledge System** is enginee
 * **Parsing & Ingestion:** LlamaParse, PyMuPDF, Docling
 * **NLP & Text Processing:** LangChain, Sentence-Transformers (Cross-Encoders)
 * **LLM Integration:** OpenRouter API
+
+## 🔮 Next Releases (v2.0 & Beyond)
+
+The system is currently evolving from a Standard RAG into a fully **Agentic RAG architecture** to handle multi-entity and comparative queries with absolute precision. Upcoming features include:
+
+* **Agentic Orchestrator:** Integrating a lightweight, local LLM router to evaluate query complexity (Simple vs. Complex) in real-time.
+* **Smart Query Decomposition:** Automatically breaking down complex comparative queries (e.g., comparing model performances across multiple papers) into isolated sub-queries.
+* **Parallel Asynchronous Retrieval:** Running concurrent retrieval pipelines for decomposed sub-queries to completely eliminate cross-encoder bias and reduce overall latency.
+* **Structured Output Enforcement:** Using Pydantic schemas to ensure strict JSON adherence from the orchestrator agent, guaranteeing a crash-free routing pipeline.
+* **Text-to-SQL Agent:** Deploying a dedicated SQL Agent to interact with structured relational databases. This will enable the system to translate natural language questions into complex SQL queries, providing dynamic analytical answers and seamlessly bridging the gap between unstructured medical literature and structured clinical data.
