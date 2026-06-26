@@ -156,6 +156,7 @@ def generate_text(project_id: str, request_data: GenerateRequest, request: Reque
         query=query,
         project_id = project_id,
     )
+    logger.info(prompt_structured)
     generated_text = nlp_controller.generate_text(
         prompt=prompt_structured,
         temperature=request_data.temperature,
@@ -171,12 +172,12 @@ def generate_text(project_id: str, request_data: GenerateRequest, request: Reque
             }
         )
     return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            "status": "success",
-            "generated_text": generated_text
-        }
-    )
+    status_code=status.HTTP_200_OK,
+    content={
+        "answer": generated_text,
+        "sources": []
+    }
+)
     
 @nlp_router.get("/rest_collections/{project_id}")
 def rest_collections(project_id, request: Request):

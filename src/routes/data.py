@@ -33,7 +33,7 @@ async def upload_files(project_id: str,
         )
     data_controller = DataController()
     is_valid,message = data_controller.validate_file(file=file)
-
+    
     if not is_valid:
         return JSONResponse(
             status_code = status.HTTP_400_BAD_REQUEST,
@@ -54,6 +54,18 @@ async def upload_files(project_id: str,
         asset_model = await AssetModel.create_instance(
             db_client= request.state.Database
         )
+        existing = await asset_model.get_asset(
+            project_id=project.id,
+            asset_name=file_id
+        )
+
+        if existing:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "message": "File already exists"
+                }
+            )
         asset_schema = AssetSchema(
             asset_project_id= project.id,
             asset_name= file_id,
@@ -110,8 +122,8 @@ async def process_file(
     for file_id in files_to_process:
         base_path = ProjectController().create_project_path(project_id=project_id)
         file_path = os.path.join(base_path, f"{file_id}{'.pdf' if '.pdf' not in file_id else ''}")
-        chunk_size = process_request.chunk_size
-        chunk_overlab = process_request.chunk_overlab
+        chunk_size = process_request.chunk_size if process_request.chunk_size else 1000
+        chunk_overlab = process_request.chunk_overlab if process_request.chunk_overlab else 200
         process_controller = ProcessControler(project_id=project_id)
         
         file_content = await process_controller.content_transformation(file_path=file_path)
