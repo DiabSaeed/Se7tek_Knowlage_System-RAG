@@ -8,6 +8,7 @@ from stores.VectorDB import VectorFactory
 from stores.llms.templates import PromptParser
 from controllers.NlpController import NlpController
 from stores.llms.GenerationInterface import GenerationInterface
+from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 
@@ -70,3 +71,10 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(base.base_router)
 app.include_router(data.data_router)
 app.include_router(nlp.nlp_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
