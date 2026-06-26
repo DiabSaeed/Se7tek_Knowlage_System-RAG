@@ -39,3 +39,7 @@ class AssetModel(BaseDataModel):
         ).to_list(length=None)
         
         return total_assets
+    async def get_asset(self,project_id , asset_name):
+        asset = self.collection.find({"asset_name":asset_name, "asset_project_id": project_id})
+        asset_list = await asset.to_list()
+        return asset
